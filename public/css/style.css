@@ -1,0 +1,30 @@
+body {
+  padding: 70px;
+}
+
+ul[dnd-list], ul[dnd-list] > li { 
+    position: relative;
+}
+
+ul[dnd-list] {
+    min-height: 42px;
+    padding-left: 0px;
+}
+
+ul[dnd-list] .dndDraggingSource {
+    display: none;
+}
+
+ul[dnd-list] > li { 
+    max-height: 120px;
+    overflow: hidden;
+}
+
+ul[dnd-list] > li:hover {
+    max-height: 240px;
+    overflow: scroll;
+}
+
+ul[dnd-list] > li .fa-bars { 
+    cursor: move;
+}

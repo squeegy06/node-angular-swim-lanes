@@ -1,0 +1,22 @@
+doctype html
+html(ng-app="swimApp")
+  head
+    title= title
+    meta(charset="utf8")
+    meta(name="viewport" content="width=device-width, initial-scale=1, user-scalable=no")
+    base(href="/")
+    link(rel='stylesheet', href='/css/bootstrap.min.css')
+    link(rel='stylesheet', href='/css/bootstrap-theme.min.css')
+    link(rel='stylesheet', href='/font-awesome/css/font-awesome.min.css')
+    link(rel='stylesheet' href="/js/app/vendors/datepicker/angular-datepicker.min.css")
+    link(rel='stylesheet', href='/css/style.css')
+    
+    script(src='https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js')
+    script(src='/js/bootstrap.min.js')
+    script(src='https://ajax.googleapis.com/ajax/libs/angularjs/1.4.2/angular.min.js')
+    script(src='https://ajax.googleapis.com/ajax/libs/angularjs/1.4.2/angular-route.min.js')
+    script(src="/js/app/vendors/angular-drag-and-drop-lists.min.js")
+    script(src="/js/app/vendors/datepicker/angular-datepicker.min.js")
+    script(src='/js/app/swim.js')
+  body
+    block content

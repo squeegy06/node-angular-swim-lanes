@@ -1,0 +1,16 @@
+form(id="swim-form" ng-submit="saveEmployees()")
+	include ../nav.jade
+	div(class="row")
+		div(class="col-md-6 col-sm-12 col-md-offset-3")
+			div(class="page-header")
+				h1 Manage Employees
+			a(ng-click="addEmployee()") Add Employee
+			ul(class="list-group")
+				li(ng-repeat="employee in employees" class="list-group-item")
+					div(class="form-group")
+						input(class="form-control" type="text" ng-model="employee.name" required)
+
+div(class='row')
+	pre
+		code()
+			{{ data }}
