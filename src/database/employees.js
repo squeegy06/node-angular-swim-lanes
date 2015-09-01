@@ -3,16 +3,20 @@ var redlock = require('./redlock');
 
 var defaults = {
 	key: 'employees',
-	lockKey: 'lock.employees',
-	lockTTL: 1000
+	lockTTL: 1000,
+	startingIncrement: 13,
+	incrementBy: 1
 };
 
 
 function Employees (options){
 	options = options || {};
 	this.key = options.key || defaults.key;
-	this.lockKey = options.lockKey || defaults.lockKey;
 	this.lockTTL = options.lockTTL || defaults.lockTTL;
+	this.startingIncrement = parseInt(options.startingIncrement) || defaults.startingIncrement;
+	this.incrementBy = parseInt(options.incrementBy) || defaults.incrementBy;
+	this.lockKey = 'lock.' + this.key;
+	this.incrementKey = 'increment.' + this.key;
 };
 
 Employees.prototype.update =
@@ -26,42 +30,25 @@ Employees.prototype.add = function add(employee, next){
 	
 	if(typeof employee.id !== 'number')
 	{
-		redlock.lock(self.lockKey, self.lockTTL)
-		.then(function(lock){
-			redis.zcount(self.key, '-inf', '+inf', function(err, result){
-				self._add(employee, function(err, result){
-					lock.unlock();
-					return next(err, result);
-				});
-			});
-		})
-		.error(function(err){
-			return next(err);
+		self._add(employee, function(err, result){
+			return next(err, result);
 		});
 	}
 	else
 	{
-		redlock.lock(self.lockKey, self.lockTTL)
-		.then(function(lock){
-			redis.zrangebyscore(self.key, employee.id, employee.id, function(err, result){
-				if(result === null)
-				{
-					self._add(employee, function(err, result){
-						lock.unlock();
-						return next(err, result);
-					});
-				}
-				else
-				{
-					self._update(employee, function(err, result){
-						lock.unlock();
-						return next(err, result);
-					});
-				}
-			});
-		})
-		.error(function(err){
-			return next(err);
+		redis.zrangebyscore(self.key, employee.id, employee.id, function(err, result){
+			if(result === null)
+			{
+				self._add(employee, function(err, result){
+					return next(err, result);
+				});
+			}
+			else
+			{
+				self._update(employee, function(err, result){
+					return next(err, result);
+				});
+			}
 		});
 	}
 };
@@ -69,29 +56,51 @@ Employees.prototype.add = function add(employee, next){
 Employees.prototype._add = function _add(employee, next){
 	var self = this;
 	
-	redis.zcount(self.key, '-inf', '+inf', function(err, result){
-		var score = result + 1;
-		
-		redis.zadd(self.key, 'NX', score, employee.name, function(err){
-			employee.id = score;
-		
-			next(err, employee);
+	redlock.lock(self.lockKey, self.lockTTL)
+	.then(function(lock){
+		redis.get(self.incrementKey, function(err, result){
+			if(err !== null)
+			{
+				lock.unlock();
+				return next(err);
+			}
+			
+			result = parseInt(result) || self.startingIncrement;
+			var score = result + self.incrementBy;
+			
+			redis.zadd(self.key, 'NX', score, employee.name, function(err){
+				redis.set(self.incrementKey, score);
+				employee.id = score;
+				lock.unlock();
+				return next(err, employee);
+			});
 		});
+	})
+	.error(function(err){
+		return next(err);
 	});
 };
 
 Employees.prototype._update = function _update(employee, next){
 	var self = this;
 	
-	redis.zremrangebyscore(self.key, employee.id, employee.id, function(err, result){
-		if(err !== null)
-		{
-			return next(err);
-		}
-		
-		redis.zadd(self.key, employee.id, employee.name, function(err){
-			return next(null, employee);
+	redlock.lock(self.lockKey, self.lockTTL)
+	.then(function(lock){
+		redis.zremrangebyscore(self.key, employee.id, employee.id, function(err, result){
+			if(err !== null)
+			{
+				lock.unlock();
+				return next(err);
+			}
+			
+			redis.zadd(self.key, employee.id, employee.name, function(err){
+				lock.unlock();
+				return next(err, employee);
+			});
 		});
+	})
+	.error(function(err){
+		return next(err);
 	});
 };
 
