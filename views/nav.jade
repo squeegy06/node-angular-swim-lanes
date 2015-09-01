@@ -12,4 +12,7 @@ nav(class="navbar navbar-inverse navbar-fixed-top")
 					a(href="/myTasks") View My Tasks
 			div(class="navbar-form navbar-right")
 				div(class="form-group")
-					button(class="btn btn-success" type="submit") Save
+					button(class="btn btn-success" type="submit" ng-disabled="!allowSave")
+						span(ng-show="!loading") Saved
+						span(ng-show="loading")
+							i(class="fa fa-spinner fa-pulse") Saving

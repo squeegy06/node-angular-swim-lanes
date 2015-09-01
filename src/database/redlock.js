@@ -3,8 +3,8 @@ var Redlock = require('redlock');
 
 var redlock = new Redlock([redis], {
 	driftFactor: 0.01,
-	retryCount: 3,
-	retryDelay: 200
+	retryCount: 10,
+	retryDelay: 400
 });
 
 module.exports = redlock;

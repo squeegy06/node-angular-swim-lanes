@@ -25,8 +25,8 @@ swimApp.config(["$routeProvider", "$locationProvider", function($routeProvider, 
 swimApp.controller("swimIndexController", ["$scope", "$http", "$location", "$routeParams", 
 function($scope, $http, $location, $routeParams){
 	$http.get('/api/swims')
-		.success(function(data, status){
-			$scope.swims = data;
+		.then(function(response){
+			$scope.swims = response.data;
 		});
 		
 	$scope.$watch('swims', function(swims){
@@ -40,9 +40,15 @@ function($scope, $http, $location, $routeParams){
 
 swimApp.controller("swimEmployeesController", ["$scope", "$http", "$location", "$routeParams", 
 function($scope, $http, $location, $routeParams){
+	$scope.loading = false;
+	$scope.allowSave = false;
+	
 	$http.get('/api/employees')
-		.success(function(data, status){
-			$scope.employees = data;
+		.then(function(response){
+			$scope.employees = response.data;
+			
+		}, function(response){
+			alert('Whoops');
 		});
 		
 	$scope.$watch('employees', function(swims){
@@ -53,16 +59,54 @@ function($scope, $http, $location, $routeParams){
 		$scope.employees.push({});
 	};
 	
-	$scope.removeEmployee = function(index) { 
-		$scope.employees.splice(index, 1);
+	$scope.removeEmployee = function(index) {
+		if(typeof $scope.employees[index].id !== 'number')
+			return $scope.employees.splice(index, 1);
+		
+		$scope.loading = true;
+		
+		var employee = $scope.employees[index];
+		
+		$http.post('/api/employee/remove', employee)
+		.then(function(response){
+			$scope.employees.splice(index, 1);
+			$scope.loading = false;
+		}, function(response){
+			$scope.loading = false;
+			alert('Whoops');
+		});
 	}
 	
 	$scope.saveEmployees = function() {
-		console.log('saving employees');
+		if(!$scope.allowSave)
+		{
+			return;
+		}
+		
+		$scope.loading = true;
 		
 		$http.post('/api/employees', {employees: $scope.employees})
-		.success(function(data, status){
-			$scope.employees = data;
+		.then(function(response){
+			$scope.employees = response.data;
+			$scope.loading = false;
+		}, function(response){
+			$scope.loading = false;
+			alert('Whoops');
+		});
+	};
+	
+	$scope.updateEmployee = function(index) {
+		$scope.loading = true;
+		
+		var employee = $scope.employees[index];
+		
+		$http.post('/api/employee', employee)
+		.then(function(response){
+			$scope.employees[index] = response.data;
+			$scope.loading = false;
+		}, function(response){
+			$scope.loading = false;
+			alert('Whoops');
 		});
 	};
 }]);

@@ -19,6 +19,22 @@ function Employees (options){
 	this.incrementKey = 'increment.' + this.key;
 };
 
+Employees.prototype.findAll = function findAll(next){
+	redis.zrange(this.key, '0', '-1', 'WITHSCORES', function(err, result){
+		var data = [];
+		
+		for(var i = 0; i < result.length; i = i + 2)
+		{
+			data.push({
+				name: result[i],
+				id: parseInt(result[i + 1])
+			});
+		}
+		
+		next(null, data);
+	});
+};
+
 Employees.prototype.update =
 Employees.prototype.add = function add(employee, next){
 	var self = this;
@@ -51,6 +67,20 @@ Employees.prototype.add = function add(employee, next){
 			}
 		});
 	}
+};
+
+Employees.prototype.delete = 
+Employees.prototype.remove = function remove(employee, next){
+	var self = this;
+	
+	if(typeof employee.id !== 'number')
+	{
+		return next(new Error('Employee ID not set.'));
+	}
+	
+	self._remove(employee, function(err, result){
+		return next(err, result);
+	});
 };
 
 Employees.prototype._add = function _add(employee, next){
@@ -104,19 +134,18 @@ Employees.prototype._update = function _update(employee, next){
 	});
 };
 
-Employees.prototype.findAll = function findAll(next){
-	redis.zrange(this.key, '0', '-1', 'WITHSCORES', function(err, result){
-		var data = [];
-		
-		for(var i = 0; i < result.length; i = i + 2)
-		{
-			data.push({
-				name: result[i],
-				id: parseInt(result[i + 1])
-			});
-		}
-		
-		next(null, data);
+Employees.prototype._remove = function _remove(employee, next){
+	var self = this;
+	
+	redlock.lock(self.lockKey, self.lockTTL)
+	.then(function(lock){
+		redis.zremrangebyscore(self.key, employee.id, employee.id, function(err, result){
+			lock.unlock();
+			return next(err, result);
+		});
+	})
+	.error(function(err){
+		return next(err);
 	});
 };
 

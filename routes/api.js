@@ -18,9 +18,10 @@ router.get('/employees', function(req, res, next){
 	});
 });
 
+/*
 router.post('/employees', function(req, res, next){
 	if(typeof req.body.employees !== 'object')
-		return res.status(400).json(new Error('Missing Employees'));
+		return res.status(400).json(new Error('Missing Employees Data'));
 		
 	var promise = [];
 	
@@ -51,6 +52,42 @@ router.post('/employees', function(req, res, next){
 	})
 	.error(function(e){
 		res.status(400).json(e);
+	});
+});
+*/
+
+router.post('/employee', function(req, res, next){
+	var employee = req.body;
+	
+	if(typeof employee !== 'object')
+		return res.status(400).json(new Error('Missing Employee Data'));
+		
+	employees.add(employee, function(err, result){
+		if(err !== null)
+		{
+			return res.status(400).json(err);
+		}
+		
+		return res.status(201).json(result);
+	});
+});
+
+router.post('/employee/remove', function(req, res, next){
+	var employee = req.body;
+	
+	if(typeof employee !== 'object')
+		return res.status(400).json(new Error('Missing Employee Data'));
+		
+	if(typeof employee.id !== "number")
+		return res.status(400).json(new Error('Missing Employee ID'));
+		
+	employees.remove(employee, function(err, result){
+		if(err !== null)
+		{
+			return res.status(400).json(err);
+		}
+		
+		return res.status(201).json(result);
 	});
 });
 
