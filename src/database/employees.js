@@ -1,8 +1,24 @@
 var redis = require('./redis');
+var redlock = require('./redlock');
 
-var employees = {};
+var defaults = {
+	key: 'employees',
+	lockKey: 'lock.employees',
+	lockTTL: 1000
+};
 
-employees.add = function(employee, next) {
+
+function Employees (options){
+	options = options || {};
+	this.key = options.key || defaults.key;
+	this.lockKey = options.lockKey || defaults.lockKey;
+	this.lockTTL = options.lockTTL || defaults.lockTTL;
+};
+
+Employees.prototype.update =
+Employees.prototype.add = function add(employee, next){
+	var self = this;
+	
 	if(typeof employee.name !== 'string')
 	{
 		return next(new Error('Employee name not set.'));
@@ -10,76 +26,84 @@ employees.add = function(employee, next) {
 	
 	if(typeof employee.id !== 'number')
 	{
-		redis.zcount('employees', '-inf', '+inf', function(err, result){
-			employees.addNew(employee, function(err, result){
-				return next(err, result);
+		redlock.lock(self.lockKey, self.lockTTL)
+		.then(function(lock){
+			redis.zcount(self.key, '-inf', '+inf', function(err, result){
+				self._add(employee, function(err, result){
+					lock.unlock();
+					return next(err, result);
+				});
 			});
+		})
+		.error(function(err){
+			return next(err);
 		});
 	}
 	else
 	{
-		redis.zrangescoreby('employees', employee.id, employee.id, function(err, result){
-			if(result === null)
-			{
-				employees.addNew(employee, function(err, result){
-					return next(err, result);
-				});
-			}
-			else
-			{
-				employees.update(employee, function(err, result){
-					return next(err, result);
-				});
-			}
+		redlock.lock(self.lockKey, self.lockTTL)
+		.then(function(lock){
+			redis.zrangebyscore(self.key, employee.id, employee.id, function(err, result){
+				if(result === null)
+				{
+					self._add(employee, function(err, result){
+						lock.unlock();
+						return next(err, result);
+					});
+				}
+				else
+				{
+					self._update(employee, function(err, result){
+						lock.unlock();
+						return next(err, result);
+					});
+				}
+			});
+		})
+		.error(function(err){
+			return next(err);
 		});
 	}
 };
 
-employees.addNew = function(employee, next){
+Employees.prototype._add = function _add(employee, next){
+	var self = this;
 	
-	if(typeof employee.name !== 'string')
-	{
-		return next(new Error('Employee name not set.'));
-	}
-	
-	redis.zcount('employees', '-inf', '+inf', function(err, result){
+	redis.zcount(self.key, '-inf', '+inf', function(err, result){
 		var score = result + 1;
 		
-		redis.zadd("employees", score, employee.name);
+		redis.zadd(self.key, 'NX', score, employee.name, function(err){
+			employee.id = score;
 		
-		employee.id = score;
-		
-		next(null, employee);
+			next(err, employee);
+		});
 	});
 };
 
-employees.update = function(employee, next){
-	if(typeof employee.name !== 'string')
-	{
-		return next(new Error('Employee name not set.'));
-	}
+Employees.prototype._update = function _update(employee, next){
+	var self = this;
 	
-	if(typeof employee.id !== 'number')
-	{
-		return next(new Error('Employee ID not set.'));
-	}
-	
-	redis.zrem('employees', employee.id, function(err, result){
-		redis.zadd('employees', employee.id, employee.name, function(err){
+	redis.zremrangebyscore(self.key, employee.id, employee.id, function(err, result){
+		if(err !== null)
+		{
+			return next(err);
+		}
+		
+		redis.zadd(self.key, employee.id, employee.name, function(err){
 			return next(null, employee);
 		});
 	});
 };
 
-employees.getAll = function(next){
-	redis.zrange('employees', '0', '-1', 'WITHSCORES', function(err, result){
+Employees.prototype.findAll = function findAll(next){
+	redis.zrange(this.key, '0', '-1', 'WITHSCORES', function(err, result){
 		var data = [];
 		
 		for(var i = 0; i < result.length; i = i + 2)
 		{
 			data.push({
 				name: result[i],
-				id: result[i + 1]
+				id: parseInt(result[i + 1])
 			});
 		}
 		
@@ -87,4 +111,4 @@ employees.getAll = function(next){
 	});
 };
 
-module.exports = employees;
+module.exports = Employees;

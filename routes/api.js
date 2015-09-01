@@ -1,7 +1,10 @@
 var express = require('express');
 var router = express.Router();
 
-var employees = require('../src/database/employees');
+var Employees = require('../src/database/employees');
+var employees = new Employees();
+
+var Promise = require('bluebird');
 
 router.get('/swims', function(req, res, next) {
 	var data = {};
@@ -10,7 +13,7 @@ router.get('/swims', function(req, res, next) {
 });
 
 router.get('/employees', function(req, res, next){
-	employees.getAll(function(err, results){
+	employees.findAll(function(err, results){
 		res.status(200).json(results);
 	});
 });
@@ -18,23 +21,37 @@ router.get('/employees', function(req, res, next){
 router.post('/employees', function(req, res, next){
 	if(typeof req.body.employees !== 'object')
 		return res.status(400).json(new Error('Missing Employees'));
+		
+	var promise = [];
 	
 	req.body.employees.forEach(function(element, index, array){
 		if(typeof element.name === 'string') {
-			employees.add(element, function(err, result){
-				if(err !== null)
-				{
-					return res.status(400).json(err);
-				}
-				console.log(result);
-				array[index] = result;
-			});
+			promise.push(new Promise(function(resolve, reject){
+				employees.add(element, function(err, result){
+					if(err !== null)
+					{
+						reject(err);
+					}
+					resolve(result);
+				});
+			}));
 		}
 	});
 	
-	console.log(req.body.employees);
-	
-	res.status(201).json(req.body.employees);
+	Promise.all(promise)
+	.then(function(){
+		var data = [];
+		
+		for(var i = 0; i < promise.length; i++)
+		{
+			data.push(promise[i].value());
+		}
+		
+		res.status(201).json(data);
+	})
+	.error(function(e){
+		res.status(400).json(e);
+	});
 });
 
 module.exports = router;

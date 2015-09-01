@@ -60,7 +60,10 @@ function($scope, $http, $location, $routeParams){
 	$scope.saveEmployees = function() {
 		console.log('saving employees');
 		
-		$http.post('/api/employees', {employees: $scope.employees});
+		$http.post('/api/employees', {employees: $scope.employees})
+		.success(function(data, status){
+			$scope.employees = data;
+		});
 	};
 }]);
 
