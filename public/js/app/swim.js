@@ -42,7 +42,7 @@ swimApp.controller("swimEmployeesController", ["$scope", "$http", "$location", "
 function($scope, $http, $location, $routeParams){
 	$http.get('/api/employees')
 		.success(function(data, status){
-			$scope.employees = [];
+			$scope.employees = data;
 		});
 		
 	$scope.$watch('employees', function(swims){
@@ -52,6 +52,10 @@ function($scope, $http, $location, $routeParams){
 	$scope.addEmployee = function() {
 		$scope.employees.push({});
 	};
+	
+	$scope.removeEmployee = function(index) { 
+		$scope.employees.splice(index, 1);
+	}
 	
 	$scope.saveEmployees = function() {
 		console.log('saving employees');

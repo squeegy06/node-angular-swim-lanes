@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 
-var redis = require('../redis');
+var employees = require('../src/database/employees');
 
 router.get('/swims', function(req, res, next) {
 	var data = {};
@@ -10,63 +10,31 @@ router.get('/swims', function(req, res, next) {
 });
 
 router.get('/employees', function(req, res, next){
-	var data = {};
-	
-	redis.zrange('employees', '-inf', '+inf', 'WITHSCORES', function(err, result){
-		console.log(result);
+	employees.getAll(function(err, results){
+		res.status(200).json(results);
 	});
-	
-	res.status(200).json(data)
 });
 
 router.post('/employees', function(req, res, next){
-	var data = req.body;
-	console.log(req.body);
+	if(typeof req.body.employees !== 'object')
+		return res.status(400).json(new Error('Missing Employees'));
 	
-	if(typeof data.employees !== 'object')
-		return res.status(400).json();
-	
-	for(var i = 0; i < data.employees.length; i++) {
-		var employeeID = data.employees[i].id;
-		var employeeName = data.employees[i].name;
-		
-		if(typeof employeeName !== 'string')
-			continue;
-			
-		if(typeof employeeID !== 'number')
-		{
-			redis.zcount('employees', '-inf', '+inf', function(err, result){
-				var score = result + 1;
-				
-				redis.zadd("employees", score, employeeName)
-				
-				 data.employees[i].id = score;
+	req.body.employees.forEach(function(element, index, array){
+		if(typeof element.name === 'string') {
+			employees.add(element, function(err, result){
+				if(err !== null)
+				{
+					return res.status(400).json(err);
+				}
+				console.log(result);
+				array[index] = result;
 			});
 		}
-		else
-		{
-			redis.zrangescoreby('employees', employeeID, employeeID, function(err, result){
-				if(result === null)
-				{
-					redis.zcount('employees', '-inf', '+inf', function(err, result){
-						var score = result + 1;
-						
-						redis.zadd("employees", score, employeeName)
-						
-						 data.employees[i].id = score;
-					});
-				}
-				else
-				{
-					redis.zrem('employees', employeeID, function(err, result){
-						redis.zadd('employees', employeeID, employeeName);
-					});
-				}
-			});
-		}
-	}
+	});
 	
-	res.status(201).json();
+	console.log(req.body.employees);
+	
+	res.status(201).json(req.body.employees);
 });
 
 module.exports = router;
