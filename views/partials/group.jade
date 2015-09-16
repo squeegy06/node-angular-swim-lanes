@@ -1,0 +1,36 @@
+form(id="swim-form" ng-submit="saveGroupOrder()")
+	include ../nav.jade
+	div(class="row")
+		div(class="col-md-6 col-sm-12 col-md-offset-3")
+			div(class="page-header")
+				h1 Manage Group: "{{ groupid }}"
+			button(class="btn btn-primary" ng-click="addMember()" type="button" ng-disabled="loading")
+				span(ng-show="!loading") Add Member
+				span(ng-show="loading") Loading
+					i(class="fa fa-spinner fa-pulse") Please Wait
+			ul(class="list-group" dnd-list="group")
+				li(
+					ng-repeat="member in group" 
+					class="list-group-item"
+					dnd-draggable="member"
+					dnd-moved="group.splice($index, 1)"
+					dnd-effect-allowed="move"
+					dnd-selected="swims.selected = member"
+					dnd-dragend="updateGroupOrder()"
+					ng-class="{'list-group-item-success': selected === member}"
+				)
+					i(class="fa fa-arrows")
+					button(ng-click="removeMember($index)" type="button" class="close" dnd-nodrag)
+						span &times;
+					div(class="form-group" dnd-nodrag)
+						input(class="form-control" type="text" ng-model="member.name" required)
+					div(class="form-group" dnd-nodrag)
+						button(class="btn btn-submit" type="button" ng-click="updateMember($index)" ng-disabled="loading")
+							span(ng-show="!loading && member.id !== undefined") Update Member
+							span(ng-show="!loading && member.id === undefined") Save New Member
+							span(ng-show="loading") Loading
+
+div(class='row')
+	pre
+		code()
+			{{ data }}
