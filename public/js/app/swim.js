@@ -42,7 +42,7 @@ swimApp.controller("swimGroupController", ["$scope", "$http", "$location", "$rou
 function($scope, $http, $location, $routeParams){
 	$scope.loading = false;
 	$scope.allowSave = true;
-	$scope.saveButton = 'Update Group Order';
+	$scope.saveButton = 'Update Group';
 	$scope.selected = null;
 	$scope.groupid = $routeParams.groupid;
 	$scope.group = [];
@@ -111,12 +111,6 @@ function($scope, $http, $location, $routeParams){
 		}
 	};
 	
-	$scope.updateGroupOrder = function() {
-		for(var i = 0; i < $scope.group.length; i++) {
-			$scope.group[i].rank = i;
-		};
-	};
-	
 	$scope.saveGroup = function() {
 		if(!$scope.allowSave)
 		{
@@ -129,6 +123,8 @@ function($scope, $http, $location, $routeParams){
 		
 		for(var i = 0; i < $scope.group.length; i++)
 		{
+			$scope.group[i].rank = i;
+			
 			if($scope.group[i].id === undefined)
 				unsavedMembers = true;
 		}

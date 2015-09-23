@@ -16,7 +16,6 @@ form(id="swim-form" ng-submit="saveGroup()")
 					dnd-moved="group.splice($index, 1)"
 					dnd-effect-allowed="move"
 					dnd-selected="swims.selected = member"
-					dnd-dragend="updateGroupOrder()"
 					ng-class="{'list-group-item-success': selected === member}"
 				)
 					i(class="fa fa-arrows")
