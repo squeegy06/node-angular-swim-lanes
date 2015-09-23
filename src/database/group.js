@@ -1,75 +1,64 @@
 var redis = require('./redis');
 var redlock = require('./redlock');
-var Promise = require('bluebird');
 
 var defaults = {
-	key: 'group'
+	key: 'group',
+	defaultRank: 0
 };
 
 
-function Group (id, options){
+function Group (options){
 	options = options || {};
 	
-	if(typeof id !== 'string')
-		throw new Error('Group ID must be a string.');
+	this.defaultRank = options.defaultRank || defaults.defaultRank;
+	if(typeof this.defaultRank !== "number")
+		throw new Error('Type of Default Rank must be "number" got "' + typeof this.defaultRank + '".');
+
+	this.key = options.key || defaults.key;
 	
-	this.id = id;
-	
-	var keyPrefix = options.key || defaults.key;
-	this.key = '__' + keyPrefix + '__' + this.id;
+	if(typeof this.key !== "string")
+		throw new Error('Member Key must be of type "string" got "' + typeof this.key + '".');
 	
 	this.memberKey = options.memberKey || null;
 };
 
-Group.prototype.findAll = function _findAll(callback){
-	var self = this;
+// Get all the members of a group.
+Group.prototype.getMembers = function _getMembers(id, callback){
+	if(typeof id !== "string")
+		return callback(new Error('Type of ID must be "string" got "' + typeof id + '".'));
+
+	var redisKey = this.makeRedisKey(id);
 	
-	redis.zrange(self.key, '0', '-1', function(err, result){
+	redis.zrange(redisKey, '0', '-1', function(err, result){
 		if(err)
 			return callback(err);
-		
-		var Member = require('./member');
-		var promises = [];
-		var data = [];
-		
-		for(var i = 0; i < result.length; i++)
-		{	
-			promises.push(new Promise(function(resolve, reject){
-				var member = new Member({
-					id: result[i]
-				}, {key: self.memberKey});
-				
-				member.reload(function(err){
-					if(err)
-						reject(err.message);
-						
-					resolve(data.push(member));
-				});
-			}));
-		}
-		
-		Promise.all(promises).then(function(){
-			return callback(null, data);
-		},function(rejection){
-			return callback(new Error(rejection));
-		}).error(function(e){
-			return callback(e);
-		});
+			
+		return callback(null, result);
 	});
 };
 
+// Add/Update a member of a group.
 Group.prototype.update =
-Group.prototype.add = function _add(member, callback){
+Group.prototype.add = function _add(id, memberid, rank, callback){
 	var self = this;
-	var Member = require('./member');
 	
-	if(!(member instanceof Member))
-		return callback(new Error('Value of member must be instance of Member.'));
+	callback = arguments[arguments.length - 1];
+	if(typeof callback !== "function")
+		throw new Error('Expected final argument to be of type "function" got type "' + typeof callback + '" instead.');
+		
+	if(typeof id !== "string")
+		return callback(new Error('Type of ID must be "string" got "' + typeof id + '".'));
 	
-	if(member.member.group[self.id] === undefined)
-		return callback(new Error('Member does not belong to this group.'));
-	
-	redis.zadd(self.key, member.member.group[self.id].rank, member.member.id, function(err, result){
+	if(typeof memberid !== "string")
+		return callback(new Error('Type of Member ID be "string" got "' + typeof memberid + '".'));
+		
+	if (typeof rank !== "number")
+		rank = self.defaultRank;
+		
+	var redisKey = this.makeRedisKey(id);
+		
+	//Update it's rank.
+	redis.zadd(redisKey, rank, memberid, function(err, result){
 		if(err)
 			return callback(err);
 			
@@ -77,20 +66,57 @@ Group.prototype.add = function _add(member, callback){
 	});
 };
 
-Group.prototype.delete = 
-Group.prototype.remove = function _remove(member, callback){
-	var self = this;
-	var Member = require('./member');
+// Remove a Member from a group.
+Group.prototype.remove = function _remove(id, memberid, callback){
+	if(typeof id !== "string")
+		return callback(new Error('Type of ID must be "string" got "' + typeof id + '".'));
 	
-	if(!(member instanceof Member))
-		return callback(new Error('Value of member must be instance of Member()'));
+	if(typeof memberid !== "string")
+		return callback(new Error('Type of Member ID be "string" got "' + typeof memberid + '".'));
+		
+	var redisKey = this.makeRedisKey(id);
 	
-	redis.zrem(self.key, member.member.id, function(err){
+	redis.zrem(redisKey, memberid, function(err){
 		if(err)
 			return callback(err);
 			
-		return callback();
+		return callback(null);
 	});
+};
+
+// Empty a Group of all members.
+Group.prototype.clear =
+Group.prototype.reset = function _reset(id, callback){
+	if(typeof id !== "string")
+		return callback(new Error('Type of ID must be "string" got "' + typeof id + '".'));
+	
+	var redisKey = this.makeRedisKey(id);
+	
+	redis.zremrangebyrank(redisKey, 0, -1, function(err){
+		if(err)
+			return callback(err);
+			
+		return callback(null);
+	});
+}
+
+// Delete a group.
+Group.prototype.delete = function _delete(id, callback){
+	if(typeof id !== "string")
+		return callback(new Error('Type of ID must be "string" got "' + typeof id + '".'));
+	
+	var redisKey = this.makeRedisKey(id);
+	
+	redis.del(redisKey, function(err){
+		if(err)
+			return callback(err);
+			
+		return callback(null);
+	});
+};
+
+Group.prototype.makeRedisKey = function _makeRedisKey(id){
+	return '__' + this.key + '__' + id;
 };
 
 module.exports = Group;

@@ -25,4 +25,26 @@ function Task(obj, options) {
 	
 	var keyPrefix = options.key || defaults.key;
 	this.key = "__" + keyPrefix + "__" + this.task.id;
+};
+
+Task.prototype.save =
+Task.prototype.persist = function _persist(callback) {
+	var self = this;
+	redis.set(self.key, JSON.stringify(self.task), function(err, result){
+		if(err)
+			return callback(err);
+			
+		var Group = require('./group');
+		
+		for(var key in self.member.group)
+		{
+			var group = new Group(key);
+			group.update(self, function(err){
+				if(err)
+					console.log(err);
+			});
+		}
+		
+		return callback(null);
+	});
 }

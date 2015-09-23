@@ -3,104 +3,87 @@ var redlock = require('./redlock');
 var uuid = require('uuid');
 
 var defaults = {
-	key: 'member',
-	defaultRank: 0,
-	defaultGroup: 'default'
+	key: 'member'
 };
 
-function Member(obj, options)
+/**
+ * Member
+ */
+function Member(options)
 {
 	options = options || {};
+
+	this.key = options.key || defaults.key;
 	
-	this.defaultRank = options.defaultRank || defaults.defaultRank;
-	if(this.defaultRank % 1 !== 0)
-		throw new Error('Value of defaultRank must be an integer.');
-		
-	this.defaultGroup = options.defaultGroup || defaults.defaultGroup;
-	
-	//If this member doesn't have an id, give it one.
-	if(typeof obj.id !== 'string')
-		obj.id = uuid.v4();
-		
-	//Make sure the member belongs to a group and the groups are valid.
-	if(obj.group === undefined)
-	{
-		obj.group = {};
-		obj.group[this.defaultGroup] = {
-			rank: this.defaultRank
-		};
-	}
-	else if(typeof obj.group !== 'object')
-	{
-		var groupKey = obj.group;
-		obj.group = {};
-		obj.group[groupKey] = {
-			rank: this.defaultRank
-		}
-	}
-	
-	for(var key in obj.group)
-	{
-		if(typeof key !== 'string')
-			throw new Error('Group IDs must be of type string.');
-			
-		if(typeof obj.group[key].rank !== 'number')
-			throw new Error('Group Ranks must be of type number.')
-	}
-	
-	this.member = obj;
-	
-	var keyPrefix = options.key || defaults.key;
-	this.key = "__" + keyPrefix + "__" + this.member.id;
+	if(typeof this.key !== "string")
+		throw new Error('Member Key must be of type "string" got "' + typeof this.key + '".');
 }
 
+/**
+ * Save a new or update a existing member.
+ */
 Member.prototype.save = 
-Member.prototype.persist = function _persist(callback) {
-	if(typeof this.member.name !== 'string')
-		return callback(new Error('You must specify a name for your member.'));
+Member.prototype.persist = function _persist(member, id, callback) {
+	callback = arguments[arguments.length - 1];
+	if(typeof callback !== "function")
+		throw new Error('Expected final argument to be of type "function" got type "' + typeof callback + '" instead.');
+	
+	if(typeof member !== "object")
+		return callback(new Error('Missing data for Member.'));
 		
-	var self = this;
-	redis.set(self.key, JSON.stringify(self.member), function(err, result){
+	if (typeof arguments[1] === "string")
+		id = arguments[1];
+	else
+		id = uuid.v4();
+		
+	var redisKey = this.makeRedisKey(id);
+	
+	redis.set(redisKey, JSON.stringify(member), function(err, result){
 		if(err)
 			return callback(err);
 			
-		var Group = require('./group');
+		return callback(null, id);
+	});
+};
+
+/**
+ * Retrieve an existing Member's Data.
+ */
+Member.prototype.get = function _get(id, callback){
+	if(typeof id !== "string")
+		return callback(new Error('ID must be of type "string" got "' + typeof id + '" instead.'));
 		
-		for(var key in self.member.group)
-		{
-			var group = new Group(key);
-			group.update(self, function(err){
-				if(err)
-					console.log(err);
-			});
-		}
+	var redisKey = this.makeRedisKey(id);
+	
+	redis.get(redisKey, function(err, result){
+		if(err)
+			return callback(err);
+		
+		var obj = null;
+		if(result !== null)
+			obj = JSON.parse(result);
+			
+		return callback(null, obj);
+	})
+};
+
+Member.prototype.remove = 
+Member.prototype.delete = function _remove(id, callback){
+	if(typeof id !== "string")
+		return callback(new Error('ID must be of type "string" got "' + typeof id + '" instead.'));
+		
+	var redisKey = this.makeRedisKey(id);
+	
+	redis.del(redisKey, function(err, result){
+		if(err)
+			return callback(err);
 		
 		return callback(null);
 	});
 };
 
-/**
- * Reload/Get the values of Member.member from the database.
- */
-Member.prototype.reload = 
-Member.prototype.get = function _get(callback){
-	var self = this;
-	
-	redis.get(self.key, function(err, result){
-		if(err)
-		{
-			return callback(err);
-		}
-			
-		if(!result)
-		{
-			return callback(new Error('Employee not found.'));
-		}
-			
-		var obj = JSON.parse(result);
-		self.member = obj;
-		return callback();
-	})
+Member.prototype.makeRedisKey = function _makeRedisKey(id){
+	return '__' + this.key + '__' + id;
 };
 
 module.exports = Member;

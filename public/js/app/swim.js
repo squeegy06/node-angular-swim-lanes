@@ -45,16 +45,36 @@ function($scope, $http, $location, $routeParams){
 	$scope.saveButton = 'Update Group Order';
 	$scope.selected = null;
 	$scope.groupid = $routeParams.groupid;
+	$scope.group = [];
+	
+	$scope.refreshMember = function(index){
+		$http.get('/api/member/' + $scope.group[index].id)
+			.then(function(response){
+				$scope.group[index] = response.data;
+			}, function(error){
+				if(error.data.error)
+					console.log(error.data.error);
+			});
+	};
+	
+	$scope.refreshMembers = function(){
+		for(var i = 0; i < $scope.group.length; i++){
+			$scope.refreshMember(i);
+		}
+	};
 	
 	$http.get('/api/group/' + $scope.groupid)
 		.then(function(response){
-			$scope.group = response.data;
-			
-		}, function(response){
-			if(response.data.error)
-				return alert(response.data.error);
-				
-			alert('Something went wrong.');
+			for(var i = 0; i < response.data.length; i++){
+				$scope.group.push({
+					id: response.data[i]
+				})
+			}
+		}, function(error){
+			if(error.data.error)
+				return alert(error.data.error);
+		}).finally(function(){
+			$scope.refreshMembers();
 		});
 		
 	$scope.$watch('group', function(group){
@@ -63,10 +83,7 @@ function($scope, $http, $location, $routeParams){
 	
 	$scope.addMember = function() {
 		var newMember = {
-			group: {}
-		};
-		newMember.group[$scope.groupid] = {
-			rank: 0
+			data: {}
 		};
 		
 		$scope.group.push(newMember);
@@ -76,13 +93,13 @@ function($scope, $http, $location, $routeParams){
 		if($scope.group[index].id === undefined)
 			return $scope.group.splice(index, 1);
 		
-		if(confirm('Are you sure you want to delete this member?'))
+		if(confirm('Are you sure you want to remove this member from the group?'))
 		{
 			$scope.loading = true;
 			
 			var member = $scope.group[index];
 			
-			$http.post('/api/member?action=remove', {member: member})
+			$http.delete('/api/group/' + $scope.groupid + '/member/' + member.id)
 			.then(function(response){
 				$scope.group.splice(index, 1);
 				$scope.loading = false;
@@ -90,19 +107,17 @@ function($scope, $http, $location, $routeParams){
 				$scope.loading = false;
 				if(response.data.error)
 					return alert(response.data.error);
-					
-				alert('Something went wrong.');
 			});
 		}
 	};
 	
 	$scope.updateGroupOrder = function() {
 		for(var i = 0; i < $scope.group.length; i++) {
-			$scope.group[i].group[$scope.groupid].rank = i;
+			$scope.group[i].rank = i;
 		};
 	};
 	
-	$scope.saveGroupOrder = function() {
+	$scope.saveGroup = function() {
 		if(!$scope.allowSave)
 		{
 			return;
@@ -121,19 +136,16 @@ function($scope, $http, $location, $routeParams){
 		if(unsavedMembers)
 		{
 			$scope.loading = false;
-			return alert('You must first save all new members before updating the group order.');
+			return alert('You must first save all new members before we can save the group.');
 		}
 		
-		$http.post('/api/group/' + $scope.groupid + '?action=updateOrder', {members: $scope.group})
+		$http.put('/api/group/' + $scope.groupid, $scope.group)
 		.then(function(response){
-			$scope.group = response.data;
 			$scope.loading = false;
 		}, function(response){
 			$scope.loading = false;
 			if(response.data.error)
 				return alert(response.data.error);
-				
-			alert('Something went wrong.');
 		});
 	};
 	
@@ -144,31 +156,25 @@ function($scope, $http, $location, $routeParams){
 		
 		if(member.id === undefined)
 		{
-			$http.post('/api/member?action=add', {member: member})
+			$http.post('/api/member', member)
 			.then(function(response){
-				$scope.group[index] = response.data;
+				$scope.group[index].id = response.data;
 				$scope.loading = false;
-			}, function(response){
+			}, function(error){
 				$scope.loading = false;
-				if(response.data.error)
-					return alert(response.data.error);
-					
-				alert('Something went wrong.');
+				if(error.data.error)
+					return alert(error.data.error);
 			});
 		}
 		else
 		{
-			$http.post('/api/member?action=update', {member: member})
+			$http.put('/api/member/' + member.id, member)
 			.then(function(response){
-				$scope.group[index] = response.data;
 				$scope.loading = false;
-			}, function(response){
+			}, function(error){
 				$scope.loading = false;
-				if(response.data.error)
-					return alert(response.data.error);
-				console.log(response);
-					
-				alert('Something went wrong.');
+				if(error.data.error)
+					return alert(error.data.error);
 			});
 		}
 	};
