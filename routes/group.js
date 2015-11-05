@@ -6,14 +6,8 @@ var Member = require('../src/database/member');
 
 var Promise = require('bluebird');
 
-router.get('/swims', function(req, res, next) {
-	var data = {};
-	
-  	res.status(200).json(data);
-});
-
 /******************
-  Group Management
+  Parameters
  *****************/
 
 router.param('groupid', function(req, res, next, id){
@@ -27,6 +21,9 @@ router.param('memberid', function(req, res, next, id){
 		if(err)
 			return res.status(500).json({error: err.message});
 		
+		if(obj === null)
+			return res.status(404).json({error: "Member not found."});
+			
 		req.member = {
 			id: id,
 			data: obj
@@ -35,6 +32,10 @@ router.param('memberid', function(req, res, next, id){
 		next();
 	});
 });
+
+/******************
+  Group Management
+ *****************/
 
 /**
  * Get the memebers of a group.
@@ -67,8 +68,6 @@ router.get('/group/:groupid', function(req, res, next){
  */
  router.put('/group/:groupid', function(req, res, next){
 	var errors = [];
-	
-	req.body = req.body || {};
 	
 	if(req.body.length === 0)
 		return res.status(400).json({error: "Missing Members."});
@@ -129,34 +128,16 @@ router.get('/group/:groupid', function(req, res, next){
  * }
  */
  router.put('/group/:groupid/member/:memberid', function(req, res, next){
-	req.body = req.body || {};
 	req.body.rank = req.body.rank || null;
-	req.body.data = req.body.data || null;
-	
-	if(req.member.data === null && req.body.data === null)
-		return res.status(404).json({error: "Member not found."});
 	
 	if(typeof req.body.rank !== "number" && req.body.rank !== null)
 		return res.status(400).json({error: 'Member Rank must be of type "number" got "'+ typeof req.body.rank +'".'});
 		
 	req.group.update(req.params.groupid, req.member.id, req.body.rank, function(err){
 		if(err)
-			return res.status(400).json({error: err.message});
+			return res.status(500).json({error: err.message});
 			
-		if(req.body.data !== null && req.body.data !== req.member.data)
-		{
-			var member = new Member();
-			member.save(req.body.data, req.member.id, function(err, id){
-				if(err)
-					return res.status(500).json({error: err.message});
-					
-				return res.status(201).json(true);
-			});
-		}
-		else
-		{
-			return res.status(201).json(true);	
-		}
+		return res.status(201).json(true);
 	});
  });
  
@@ -168,7 +149,7 @@ router.get('/group/:groupid', function(req, res, next){
 router.delete('/group/:groupid/member/:memberid', function(req, res, next){
 	req.group.remove(req.params.groupid, req.member.id, function(err){
 		if(err)
-			return res.status(400).json({error: err.message});
+			return res.status(500).json({error: err.message});
 		
 		return res.status(200).json(true);
 	})
@@ -195,101 +176,6 @@ router.delete('/group/:groupid', function(req, res, next){
  */
 router.all('/group', function(req, res, next){
 	res.status(400).json({error: 'No action found for "'+ req.originalUrl +'".'});
-});
-
-
-/*******************
-  Member Management
- ******************/
-
-/**
- * Get Member.
- * 
- * GET /member/:memberid
- */
-router.get('/member/:memberid', function(req, res, next){
-	return res.status(200).json(req.member);
-});
- 
-/**
- * Add new member.
- * 
- * POST /member
- * {
- * 	data: <object>
- * }
- */
-router.post('/member', function(req, res, next){
-	var member = new Member();
-	
-	if(typeof req.body.data !== "object")
-		return res.status(400).json({error: "Missing Member data."});
-		
-	member.save(req.body.data, function(err, id){
-		if(err)
-			return res.status(400).json({error: err.message});
-		
-		return res.status(201).json(id);
-	});
-});
-
-/**
- * Update existing member replacing all data.
- * 
- * PUT /member/:memberid
- * {
- * 	data: <object>
- * }
- */
-router.put('/member/:memberid', function(req, res, next){
-	var member = new Member();
-	
-	if(typeof req.body.data !== "object")
-		return res.status(400).json({error: "Missing Member data."});
-	
-	member.save(req.body.data, req.member.id, function(err, id){
-		if(err)
-			return res.status(400).json({error: err.message});
-		
-		return res.status(201).json(true);
-	});
-});
-
-/**
- * Update existing member adding/replacing given data.
- * 
- * POST /member/:memberid
- * {
- * 	data: <object>
- * }
- */
-router.post('/member/:memberid', function(req, res, next){
-	var member = new Member();
-	
-	req.member.data = req.member.data || {};
-	
-	if(typeof req.body.data !== "object")
-		return res.status(400).json({error: "Missing Member data."});
-		
-	for(var key in req.body.data){
-		req.member.data[key] = req.body.data[key];
-	}
-	
-	member.save(req.member.data, req.member.id, function(err, id){
-		if(err)
-			return res.status(400).json({error: err.message});
-		
-		return res.status(201).json(true);
-	});
-});
-
-/**
- * Catch any request that didn't match an action.
- * 
- * ALL /member
- */
-router.all('/member', function(req, res, next){
-	res.status(400).json({error: 'No action found for "' + req.query.action + '".'});
 });
 
 module.exports = router;

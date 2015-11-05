@@ -1,0 +1,7 @@
+include ../nav.jade
+div(class="row")
+	div(class="panel panel-primary" ng-repeat="member in group")
+		div(class="panel-heading") {{ member.data.name }}
+		div(class="panel-body")
+			Some tasks
+		

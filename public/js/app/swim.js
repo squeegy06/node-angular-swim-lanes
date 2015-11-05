@@ -14,6 +14,10 @@ swimApp.config(["$routeProvider", "$locationProvider", function($routeProvider, 
 			templateUrl: 'partials/group',
 			controller: "swimGroupController"
 		}).
+		when('/lanes', {
+			templateUrl: 'partials/lanes',
+			controller: "swimLanesController"
+		}).
 		otherwise({
 			templateUrl: "partials/error",
 			controller: "swim404Controller"
@@ -36,6 +40,46 @@ function($scope, $http, $location, $routeParams){
 	$scope.saveSwims = function() {
 		console.log('saving swims');
 	}
+}]);
+
+swimApp.controller("swimLanesController", ["$scope", "$http", "$location", "$routeParams",
+function($scope, $http, $location, $routeParams){
+	$scope.loading = false;
+	$scope.allowSave = true;
+	$scope.saveButton = 'Update Group';
+	$scope.selected = null;
+	$scope.groupid = $routeParams.groupid;
+	$scope.group = [];
+	
+	$scope.refreshMember = function(index){
+		$http.get('/api/member/' + $scope.group[index].id)
+			.then(function(response){
+				$scope.group[index] = response.data;
+			}, function(error){
+				if(error.data.error)
+					console.log(error.data.error);
+			});
+	};
+	
+	$scope.refreshMembers = function(){
+		for(var i = 0; i < $scope.group.length; i++){
+			$scope.refreshMember(i);
+		}
+	};
+	
+	$http.get('/api/group/default')
+		.then(function(response){
+			for(var i = 0; i < response.data.length; i++){
+				$scope.group.push({
+					id: response.data[i]
+				})
+			}
+		}, function(error){
+			if(error.data.error)
+				return alert(error.data.error);
+		}).finally(function(){
+			$scope.refreshMembers();
+		});
 }]);
 
 swimApp.controller("swimGroupController", ["$scope", "$http", "$location", "$routeParams", 

@@ -7,7 +7,10 @@ var bodyParser = require('body-parser');
 
 var index = require('./routes/index');
 var partials = require('./routes/partials');
-var api = require('./routes/api');
+var memberapi = require('./routes/member');
+var groupapi = require('./routes/group');
+var swimlaneapi = require('./routes/swimlane');
+var taskapi = require('./routes/task');
 
 var app = express();
 
@@ -28,7 +31,7 @@ app.use('/partials', partials);
 
 
 //Handle API requests.
-app.use('/api', api);
+app.use('/api', [memberapi, groupapi, swimlaneapi, taskapi]);
 
 //All other requests.
 app.use('/', index);

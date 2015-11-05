@@ -1,50 +1,85 @@
 var redis = require('./redis');
-var redlock = require('./redlock');
 var uuid = require('uuid');
 
 var defaults = {
-	key: 'task',
-	defaultRank: 0
+	key: 'task'
 };
 
-function Task(obj, options) {
+function Task(options) {
 	
 	options = options || {};
-	
-	this.defaultRank = options.defaultRank || defaults.defaultRank;
-	if(this.defaultRank % 1 !== 0)
-		throw new Error('Value of defaultRank must be an integer.');
 		
-	this.defaultGroup = options.defaultGroup || defaults.defaultGroup;
+	this.key = options.key || defaults.key;
 	
-	//If this task doesn't have an id, give it one.
-	if(typeof obj.id !== 'string')
-		obj.id = uuid.v4();
-	
-	this.task = obj;
-	
-	var keyPrefix = options.key || defaults.key;
-	this.key = "__" + keyPrefix + "__" + this.task.id;
+	if(typeof this.key !== "string")
+		throw new Error('Task Key must be of type "string" got "' + typeof this.key + '".');
 };
 
+/**
+ * Save or update an existing Task.
+ */
 Task.prototype.save =
-Task.prototype.persist = function _persist(callback) {
-	var self = this;
-	redis.set(self.key, JSON.stringify(self.task), function(err, result){
+Task.prototype.persist = function _persist(task, id, callback) {
+	callback = arguments[arguments.length - 1];
+	if(typeof callback !== "function")
+		throw new Error('Expected final argument to be of type "function" got type "' + typeof callback + '" instead.');
+	
+	if(typeof task !== "object")
+		return callback(new Error('Missing data for Task.'));
+		
+	if (typeof arguments[1] === "string")
+		id = arguments[1];
+	else
+		id = uuid.v4();
+		
+	var redisKey = this.makeRedisKey(id);
+	
+	redis.set(redisKey, JSON.stringify(task), function(err, result){
 		if(err)
 			return callback(err);
 			
-		var Group = require('./group');
+		return callback(null, id);
+	});
+}
+
+/**
+ * Retrieve an existing Task's Data.
+ */
+Task.prototype.get = function _get(id, callback){
+	if(typeof id !== "string")
+		return callback(new Error('ID must be of type "string" got "' + typeof id + '" instead.'));
 		
-		for(var key in self.member.group)
-		{
-			var group = new Group(key);
-			group.update(self, function(err){
-				if(err)
-					console.log(err);
-			});
-		}
+	var redisKey = this.makeRedisKey(id);
+	
+	redis.get(redisKey, function(err, result){
+		if(err)
+			return callback(err);
+		
+		var obj = null;
+		if(result !== null)
+			obj = JSON.parse(result);
+			
+		return callback(null, obj);
+	})
+};
+
+Member.prototype.remove = 
+Member.prototype.delete = function _remove(id, callback){
+	if(typeof id !== "string")
+		return callback(new Error('ID must be of type "string" got "' + typeof id + '" instead.'));
+		
+	var redisKey = this.makeRedisKey(id);
+	
+	redis.del(redisKey, function(err, result){
+		if(err)
+			return callback(err);
 		
 		return callback(null);
 	});
-}
+};
+
+Task.prototype.makeRedisKey = function _makeRedisKey(id){
+	return '__' + this.key + '__' + id;
+};
+
+module.exports = Task;

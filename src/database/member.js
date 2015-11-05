@@ -1,5 +1,4 @@
 var redis = require('./redis');
-var redlock = require('./redlock');
 var uuid = require('uuid');
 
 var defaults = {
@@ -79,6 +78,24 @@ Member.prototype.delete = function _remove(id, callback){
 			return callback(err);
 		
 		return callback(null);
+	});
+};
+
+//Search for members
+Member.prototype.search = function _search(id, callback){
+	if(typeof id !== "string")
+		return callback(new Error('Type of ID must be "string" got "' + typeof id + '".'));
+		
+	var redisKeyBase = this.makeRedisKey('');
+	var redisKey = redisKeyBase + '*' + id + '*';
+	
+	redis.keys(redisKey, function(err, result){
+		for(var i = 0; i < result.length; i++) {
+			//Remove the key base so we just have the ID.
+			result[i] = result[i].replace(redisKeyBase, '');
+		}
+		
+		return callback(err, result);
 	});
 };
 

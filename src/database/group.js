@@ -1,5 +1,4 @@
 var redis = require('./redis');
-var redlock = require('./redlock');
 
 var defaults = {
 	key: 'group',
@@ -17,9 +16,7 @@ function Group (options){
 	this.key = options.key || defaults.key;
 	
 	if(typeof this.key !== "string")
-		throw new Error('Member Key must be of type "string" got "' + typeof this.key + '".');
-	
-	this.memberKey = options.memberKey || null;
+		throw new Error('Group Key must be of type "string" got "' + typeof this.key + '".');
 };
 
 // Get all the members of a group.
@@ -98,7 +95,25 @@ Group.prototype.reset = function _reset(id, callback){
 			
 		return callback(null);
 	});
-}
+};
+
+//Search for groups
+Group.prototype.search = function _search(id, callback){
+	if(typeof id !== "string")
+		return callback(new Error('Type of ID must be "string" got "' + typeof id + '".'));
+		
+	var redisKeyBase = this.makeRedisKey('');
+	var redisKey = redisKeyBase + '*' + id + '*';
+	
+	redis.keys(redisKey, function(err, result){
+		for(var i = 0; i < result.length; i++) {
+			//Remove the key base so we just have the ID.
+			result[i] = result[i].replace(redisKeyBase, '');
+		}
+		
+		return callback(err, result);
+	});
+};
 
 // Delete a group.
 Group.prototype.delete = function _delete(id, callback){
