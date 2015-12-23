@@ -17,3 +17,5 @@ div(class="row")
 div(class="row")               
     div(class="col-sm-12 col-md-6" ng-if="!isNew")
         h4 Tasks
+        div(class="col-sm-offset-2")
+            button(type="submit" class="btn btn-small btn-success" ng-disable="loading") Save
