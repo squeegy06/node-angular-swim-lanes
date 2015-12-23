@@ -1,0 +1,19 @@
+div(class="row")
+    div(class="page-header")
+        h1(ng-if="!isNew")
+            {{member.data.name}}
+        h1(ng-if="isNew")
+            |New Member
+    div(class="col-sm-12 col-md-6")
+        h4 Profile
+        form(class="form-horizontal" ng-submit="saveMember()")
+            div(class="form-group")
+                label(for="name" class="control-label col-sm-2") Name
+                div(class="col-sm-10")
+                    input(name="name" class="form-control" type="text" ng-model="member.data.name")
+            div(class="form-group")
+                div(class="col-sm-offset-2")
+                    button(type="submit" class="btn btn-small btn-success" ng-disable="loading") Save
+div(class="row")               
+    div(class="col-sm-12 col-md-6" ng-if="!isNew")
+        h4 Tasks

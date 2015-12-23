@@ -17,6 +17,16 @@ html(ng-app="swimApp")
     script(src='https://ajax.googleapis.com/ajax/libs/angularjs/1.4.2/angular-route.min.js')
     script(src="/js/app/vendors/angular-drag-and-drop-lists.min.js")
     script(src="/js/app/vendors/datepicker/angular-datepicker.min.js")
+    
+    //Our Angular App
     script(src='/js/app/swim.js')
+    //Custom Services
+    script(src='/js/app/services/member.js')
+    script(src='/js/app/services/group.js')
+    //Controllers
+    script(src='/js/app/controllers/team.js')
+    script(src='/js/app/controllers/member.js')
   body
+    block main_nav
+        include ./nav.jade
     block content

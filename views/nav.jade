@@ -1,19 +1,9 @@
 nav(class="navbar navbar-inverse navbar-fixed-top")
 	div(class="container-fluid")
 		div(class="navbar-header")
-			span(class="navbar-brand") Swim
+			a(href="/")
+				span(class="navbar-brand") 'corePHP' Swim
 		div(class="navbar-collapse collapse")
 			ul(class="nav navbar-nav")
 				li
-					a(href="/group/default") Manage Group
-				li
-					a(href="/editFlow") Edit Flow
-				li
-					a(href="/myTasks") View My Tasks
-			div(class="navbar-form navbar-right")
-				div(class="form-group")
-					button(class="btn btn-success" type="submit" ng-disabled="!allowSave")
-						span(ng-show="!loading && saveButton !== undefined") {{ saveButton }}
-						span(ng-show="!loading && saveButton === undefined") Save
-						span(ng-show="loading")
-							i(class="fa fa-spinner fa-pulse") Saving
+					a(href="/team/corephp") Team
